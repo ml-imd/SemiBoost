@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration xmlns="http://logging.apache.org/log4j/2.0/config">
+    <Properties>
+        <Property name="basePath">./log</Property>
+    </Properties>
+    <Loggers>
+        <Logger name="eocd" level="error" />
+        <Root level="error">
+            <!-- AppenderRef ref="STDOUT" /-->
+            <!-- AppenderRef ref="FILE" /-->
+        </Root>
+    </Loggers>
+</Configuration>

@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.Vector;
 
 import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
@@ -26,22 +27,18 @@ import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.Option;
 import weka.core.OptionHandler;
 import weka.core.RevisionUtils;
 import weka.core.TechnicalInformation;
 import weka.core.TechnicalInformation.Field;
 import weka.core.TechnicalInformation.Type;
 import weka.core.TechnicalInformationHandler;
+import weka.core.Utils;
 import weka.core.converters.ArffLoader;
 
 public class SemiBoost extends RandomizableIteratedSingleClassifierEnhancer implements OptionHandler, TechnicalInformationHandler, AdditionalMeasureProducer {
 
-	/**
-	 * Main method for testing this class.
-	 *
-	 * @param argv should contain command line options (see setOptions)
-	 * @throws Exception 
-	 */
 	public static void main(String[] argv) throws Exception {
 		ArffLoader loader = new ArffLoader();
 		loader.setSource(new File("Vehicle23.arff"));
@@ -90,10 +87,11 @@ public class SemiBoost extends RandomizableIteratedSingleClassifierEnhancer impl
 
 	private static final long serialVersionUID = 1;
 
-	private List<WeightedClassifier> classifiers;
-	protected double constant; // set default #l/#u as -1
+	protected double constant = -1; // set default #l/#u as -1
 	protected double percentSampling = 0.1;
 	protected double deltaPercentile = 0.1; // 10 a 20
+
+	private List<WeightedClassifier> classifiers;
 	private double delta;
 	private Instances labeled;
 
@@ -143,7 +141,8 @@ public class SemiBoost extends RandomizableIteratedSingleClassifierEnhancer impl
 		Set<Instance> labeled = new HashSet<>();
 		Set<Instance> unlabeled = new HashSet<>();
 		splitInstances(instances, labeled, unlabeled);
-		constant = unlabeled.size() > 0 ? labeled.size() / (double) unlabeled.size() : 1.0;
+		if (constant == -1)
+			constant = unlabeled.size() > 0 ? labeled.size() / (double) unlabeled.size() : 1.0;
 
 		classifiers = new ArrayList<>(getNumIterations());
 		Map<InstancePair, Double> similarities = computeSimilarity(instances);
@@ -508,5 +507,87 @@ public class SemiBoost extends RandomizableIteratedSingleClassifierEnhancer impl
 		private SemiBoost getEnclosingInstance() {
 			return SemiBoost.this;
 		}
+	}
+
+	public Enumeration<Option> listOptions() {
+		Vector<Option> newVector = new Vector<Option>(3);
+		newVector.addElement(new Option("\tThe weight importance between the labeled and the unlabeled data [0.0,1.0].\n\t(-1 for #labeled/#unlabeled).", "T", 1, "-T <importante>"));
+		newVector.addElement(new Option("\tThe percentage of unlabeled instances [0.0,1.0].\n\t(Default = 1.0)", "P", 1, "-P <percentage>"));
+		newVector.addElement(new Option("\tThe percentile of the scale parameter controlling the spread of the radial basis function [0.0,1.0].\n\t(Default = 1.0)", "D", 1, "-D <percentile>"));
+		newVector.addAll(Collections.list(super.listOptions()));
+		return newVector.elements();
+	}
+
+	public void setOptions(String[] options) throws Exception {
+		String constantString = Utils.getOption('T', options);
+		if (constantString.length() > 0) {
+			constant = Double.parseDouble(constantString);
+		} else {
+			constant = 0.1;
+		}
+		String percentString = Utils.getOption('P', options);
+		if (percentString.length() > 0) {
+			percentSampling = Double.parseDouble(percentString);
+		} else {
+			percentSampling = 0.1;
+		}
+		String deltaString = Utils.getOption('D', options);
+		if (deltaString.length() > 0) {
+			deltaPercentile = Double.parseDouble(deltaString);
+			if (deltaPercentile <= 0)
+				deltaPercentile = 0.1;
+		} else {
+			deltaPercentile = 0.1;
+		}
+		super.setOptions(options);
+		Utils.checkForRemainingOptions(options);
+	}
+
+	public String[] getOptions() {
+		Vector<String> options = new Vector<String>();
+		options.add("-T");
+		options.add(Double.toString(constant));
+		options.add("-P");
+		options.add(Double.toString(percentSampling));
+		options.add("-D");
+		options.add(Double.toString(deltaPercentile));
+		Collections.addAll(options, super.getOptions());
+		return options.toArray(new String[0]);
+	}
+
+	public String constantTipText() {
+		return "The weight importance between the labeled and the unlabeled data.";
+	}
+
+	public void setConstant(double value) {
+		constant = value;
+	}
+
+	public double getConstant() {
+		return constant;
+	}
+
+	public String percentSamplingTipText() {
+		return "The percentage of unlabeled instances (p>0).";
+	}
+
+	public void setPercentSampling(double value) {
+		percentSampling = value;
+	}
+
+	public double getPercentSampling() {
+		return percentSampling;
+	}
+
+	public String deltaPercentileTipText() {
+		return "The percentile of the spread of the RBF (p>0).";
+	}
+
+	public void setDeltaPercentile(double value) {
+		deltaPercentile = value;
+	}
+
+	public double getDeltaPercentile() {
+		return deltaPercentile;
 	}
 }
